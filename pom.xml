@@ -4,9 +4,102 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>net.oneandone.commonlibs</groupId>
+    <groupId>net.oneandone.neo</groupId>
     <artifactId>neo-pom</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <packaging>pom</packaging>
+
+
+    <developers>
+        <developer>
+            <name>Cornel Creanga</name>
+            <email>corneliu.creanga@1and1.ro</email>
+            <timezone>UTC+02:00</timezone>
+        </developer>
+        <developer>
+            <name>Gregor Roth</name>
+            <email>gregor.roth@1and1.de</email>
+            <timezone>UTC+01:00</timezone>
+        </developer>
+
+    </developers>
+    <scm>
+        <connection>scm:git:git@github.com/1and1/neo</connection>
+        <developerConnection>scm:git:git@github.com/1and1/neo</developerConnection>
+        <url>git@github.com/1and1/neo</url>
+    </scm>
+
+    <properties>
+        <guava.version>19.0</guava.version>
+        <javax.ws.rs-api.version>2.0.1</javax.ws.rs-api.version>
+        <slf4j-api.version>1.7.13</slf4j-api.version>
+
+
+        <maven-compiler-plugin.version>3.3</maven-compiler-plugin.version>
+        <maven-source-plugin.version>2.4</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>2.10.3</maven-javadoc-plugin.version>
+
+        <maven-surefire-plugin.version>2.19.1</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>2.19.1</maven-failsafe-plugin.version>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <skipTests>false</skipTests>
+        <skipITs>${skipTests}</skipITs>
+        <skipUTs>${skipTests}</skipUTs>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <skipTests>${skipUTs}</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven-failsafe-plugin.version}</version>
+                <configuration>
+                    <skipTests>${skipTests}</skipTests>
+                    <skipITs>${skipITs}</skipITs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+
+    </build>
+
+
 </project>
