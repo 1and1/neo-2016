@@ -24,6 +24,13 @@
         </developer>
 
     </developers>
+
+    <modules>
+        <module>neo-collect</module>
+        <module>neo-datareplicator</module>
+        <module>neo-problem</module>
+    </modules>
+
     <scm>
         <connection>scm:git:git@github.com/1and1/neo</connection>
         <developerConnection>scm:git:git@github.com/1and1/neo</developerConnection>
