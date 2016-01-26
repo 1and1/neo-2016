@@ -1,9 +1,10 @@
 DataReplicator
 ==============
 
-The DataReplicator is a ***pull-based client*** lib to replicated uri addressed resources in a ***resilient*** way. Typically the Data Replicator is used to replicate central managed resources such as configuration files, template files, ACL list or ip lists. 
+The DataReplicator is a ***pull-based client*** lib to replicated uri addressed resources in a ***resilient*** way. Typically the Data Replicator is used to replicate central managed resources such as configurations, template files, ACL list or IP lists. 
 
-The data replicator uses uri to adress the resource to replicate. Currently the [uri schemes](https://tools.ietf.org/html/rfc3986) `http`, `https`, `file` and `classpath` are supported. For instance `http://myserver/defintions/schemas.zip`, `file:/C:/image/defintions/schemas.zip` or `classpath:defintions/schemas.zip` are valid resource identifier to address a `schemas.zip` resource.  
+The data replicator uses uri to adress the resource to replicate. Currently the [uri schemes](https://tools.ietf.org/html/rfc3986) `http`, `https`, `file` and `classpath` are supported. 
+For instance `http://myserver/defintions/schemas.zip`, `file:/C:/image/defintions/schemas.zip` or `classpath:defintions/schemas.zip` are valid resource identifier to address a `schemas.zip` resource.  
 
 Modifications of the resource to replicate will be detected by performing periodical checks. If the resource is modified, the replicator will process the modified resource. This pull approach causes that ***modifications become visible after a small delay*** of some seconds or few minutes depending on the concrete check period. As higher the check frequency as lower the modification delay. On the other side as higher the check frequency, as higher the load of the resource server. By default the replication period is 1 minute.
 
