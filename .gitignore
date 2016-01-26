@@ -1,7 +1,18 @@
-out
-target
+# IDEA
 *.iml
-.idea
+.idea/
+*.ipr
+*.iws
+/out/
+.idea_modules/
+atlassian-ide-plugin.xml
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# MVN
+target
 
 # Compiled source #
 ###################
@@ -39,12 +50,28 @@ target
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-/neo-problem/.project
-/neo-problem/.settings
-/neo-problem/.classpath
-/neo-datareplicator/.project
-/neo-datareplicator/.settings
-/neo-datareplicator/.classpath
-/neo-collect/.project
-/neo-collect/.settings
-/neo-collect/.classpath
+
+# ECLIPSE
+######################
+.project
+.settings
+.classpath
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.externalToolBuilders/
+*.launch
+*.pydevproject
+.cproject
+.factorypath
+.buildpath
+.target
+.texlipse
+.springBeans
