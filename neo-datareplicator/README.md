@@ -7,9 +7,9 @@ The data replicator uses uri to adress the resource to replicate. Currently the 
 
 Modifications of the resource to replicate will be detected by performing periodical checks. If the resource is modified, the replicator will process the modified resource. This pull approach causes that ***modifications become visible after a small delay*** of some seconds or few minutes depending on the concrete check period. As higher the check frequency as lower the modification delay. On the other side as higher the check frequency, as higher the load of the resource server. By default the replication period is 1 minute.
 
-The Data replicator provides resiliency by ***caching the replicated resource on the local node***. The means the resource will also be available, if the resource Server is down by falling back to the cached resource. Each time a resource is replicated it will be stored on the local node. If the replication job will be started, first the replicator tries to replicate the resource. If the resource is not available the replicator tries to read the local stored resource of a former replication. By default the cached resource will be valid until 30 days.
+The Data replicator provides resiliency by ***caching the replicated resource on the local node***. The means the resource will also be available, if the resource Server is down by falling back to the cached resource. Each time a resource is replicated it will be stored on the local node. If the replication job will be started, first the replicator tries to replicate the resource. If the resource is not available the replicator tries to read the local stored resource of a former replication. By default the cached resource will be valid until 30 days. After this time the cached resource will be removed. 
 
-In the example code below a new replicator job will be started within the constructor. Each time the resource is modified the updateWhilelist is called. The updateWhilelist will throw an exception, if the data is invalid. In this case the replicator will not cache the resource. The closing the example resource below, the replicator job will be stopped by performing the close method. The replicator job uses an thread pool internally and should be stopped in an explicit way.     
+In the example code below a new replicator job will be started within the constructor. Each time the resource is modified the updateWhilelist is called. The updateWhilelist will throw an exception, if the data is invalid. In this case the replicator will not cache the resource. If the example HostnameValidator class is closed, the replicator job will be stopped by performing the close method. The replicator job uses an thread pool internally and should be stopped in an explicit way.     
 
 
 ```
@@ -45,6 +45,8 @@ public class HostnameValidator implements Closeable {
 } 
 ```
 
+
+## Customizing the replication properties ##
 To use a custom check frequency the replicator provides the `withRefreshPeriod` method  
 ```
         this.whitelistReplicationJob = ReplicationJob.source(hostnameWhitelistUri)
@@ -72,9 +74,11 @@ If the replicator should fail on start the `withFailOnInitFailure` method will b
 
 ```
 
-To implement a health check the `ReplicationJob` instance supports getting meta data.
+
+## Metadata support ##
+To implement a custom health check the `ReplicationJob` instance supports getting meta data.
 ```
-    public Health healthCheck() {
+    public Health healthCheck() {   // springboot health-based implementation 
         return whitelistReplicationJob.getExpiredTimeSinceRefreshSuccess()
                                       .map(elapsed -> Duration.ofDays(2).minus(elapsed).isNegative())  // expired?
                                       .map(expired -> expired ? Health.down().build() 
@@ -83,6 +87,8 @@ To implement a health check the `ReplicationJob` instance supports getting meta 
     }
 ```
  
+
+## Consumer support ##
 By starting the replicator a consumer has to be passed such as the `updateWhilelist` method in the example above. The replicator supports binary data consumer as well as text-based consumer. To support text-based consumer the content type charset setting in context of the `http`, `https` scheme is considered as well as the charset in context of a `file`, `classpath` scheme. In this case BOM detection and heuristics methods (as fallback) are used
 
 
