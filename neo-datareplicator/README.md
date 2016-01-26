@@ -109,7 +109,7 @@ public class RenderingService implements Closeable {
         whitelistReplicationJob.close();
     }
   
-    private void unpackTemplatesZipfile(final ImmutableList<byte[]> zipped) throws IllegalArgumentException {
+    private void unpackTemplatesZipfile(final ImmutableList<byte[]> zipped) throws RuntimeException {
         // perform unzip and some validations. May throw a runtime exception
         // ...
         
