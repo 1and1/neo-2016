@@ -17,11 +17,10 @@
 
 package net.oneandone.neo.datareplicator;
 
-import java.io.ByteArrayInputStream;
-
 
 
 import java.io.Closeable;
+
 import java.io.File;
 
 import java.io.FileInputStream;
@@ -30,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -43,18 +43,13 @@ import java.util.function.Consumer;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation.Builder;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 
 import net.oneandone.neo.collect.Immutables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.xml.sax.SAXException;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
@@ -105,78 +100,155 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
     public ReplicationJobBuilderImpl withMaxCacheTime(final Duration maxCacheTime) {
         Preconditions.checkNotNull(maxCacheTime);
         return new ReplicationJobBuilderImpl(this.uri,
-                this.failOnInitFailure,
-                this.cacheDir,
-                maxCacheTime,
-                this.refreshPeriod,
-                this.client);
+                                             this.failOnInitFailure,
+                                             this.cacheDir,
+                                             maxCacheTime,
+                                             this.refreshPeriod,
+                                             this.client);
     }
 
     @Override
     public ReplicationJobBuilderImpl withFailOnInitFailure(final boolean failOnInitFailure) {
         return new ReplicationJobBuilderImpl(this.uri,
-                failOnInitFailure,
-                this.cacheDir,
-                this.maxCacheTime,
-                this.refreshPeriod,
-                this.client);
+                                             failOnInitFailure,
+                                             this.cacheDir,
+                                             this.maxCacheTime,
+                                             this.refreshPeriod,
+                                             this.client);
     }
 
     @Override
     public ReplicationJobBuilderImpl withCacheDir(final File cacheDir) {
         Preconditions.checkNotNull(cacheDir);
         return new ReplicationJobBuilderImpl(this.uri,
-                this.failOnInitFailure,
-                cacheDir,
-                this.maxCacheTime,
-                this.refreshPeriod,
-                this.client);
+                                             this.failOnInitFailure,
+                                             cacheDir,
+                                             this.maxCacheTime,
+                                             this.refreshPeriod,
+                                             this.client);
     }
 
     @Override
     public ReplicationJobBuilderImpl withClient(final Client client) {
         Preconditions.checkNotNull(client);
         return new ReplicationJobBuilderImpl(this.uri,
-                this.failOnInitFailure,
-                this.cacheDir,
-                this.maxCacheTime,
-                this.refreshPeriod,
-                client);
+                                             this.failOnInitFailure, 
+                                             this.cacheDir,
+                                             this.maxCacheTime,
+                                             this.refreshPeriod,
+                                             client);
     }
 
     @Override
     public ReplicationJob startConsumingBinary(final Consumer<byte[]> consumer) {
-        Preconditions.checkNotNull(consumer);
-        return new ReplicatonJobImpl(uri,
-                failOnInitFailure,
-                cacheDir,
-                maxCacheTime,
-                refreshPeriod,
-                client,
-                consumer);
+        return startConsuming(data -> consumer.accept(data.asBinary()));
     }
-
+    
     @Override
     public ReplicationJob startConsumingText(final Consumer<String> consumer) {
-        Preconditions.checkNotNull(consumer);
-        return startConsumingBinary(binary -> consumer.accept(new String(binary, Charsets.UTF_8)));
+        return startConsuming(data -> consumer.accept(data.asText()));
     }
 
     @Override
     public ReplicationJob startConsumingTextList(final Consumer<ImmutableList<String>> consumer) {
-        Preconditions.checkNotNull(consumer);
         return startConsumingText(text -> consumer.accept(ImmutableList.copyOf(Splitter.onPattern("\r?\n")
-                .trimResults()
-                .splitToList(text))));
+                                                  .trimResults()
+                                                  .splitToList(text))));
+    }
+
+    private ReplicationJob startConsuming(final Consumer<Data> consumer) {
+        Preconditions.checkNotNull(consumer);
+        return new ReplicatonJobImpl(uri,
+                                     failOnInitFailure,
+                                     cacheDir,
+                                     maxCacheTime,
+                                     refreshPeriod,
+                                     client,
+                                     consumer);  
+    }
+    
+    
+    // internal data representation
+    private static interface Data {
+        
+        long getHash();
+        
+        byte[] asBinary();
+        
+        String asText();
+    }
+
+    
+    private static class HeuristicsDecodingData implements Data {
+        private final byte[] binary;
+        private final long hash;
+        
+        public HeuristicsDecodingData(final byte[] binary) {
+            this.binary = binary;
+            this.hash = Hashing.md5().newHasher().putBytes(binary).hash().asLong();
+        }
+        
+        @Override
+        public long getHash() {
+            return hash;
+        }
+        
+        @Override
+        public byte[] asBinary() {
+            return binary;
+        }
+        
+
+        @Override
+        public String asText() {
+            return new String(binary, Encodings.guessEncoding(binary));
+        }
     }
 
 
+    
+    
+    private static class MimeTypeBasedDecodingData implements Data {
+        private final byte[] binary;
+        private final long hash;
+        private final Charset charset; 
+        
+        public MimeTypeBasedDecodingData(final byte[] binary, final String mimeType) {
+            this.binary = binary;
+            this.hash = Hashing.md5().newHasher().putBytes(binary).hash().asLong();
+            this.charset = getCharset(MediaType.valueOf(mimeType));
+        }
+        
+        private Charset getCharset(MediaType mediaType) {
+            final String name = (mediaType == null) ? null
+                                                    : mediaType.getParameters().get(MediaType.CHARSET_PARAMETER);
+            return (name == null) ? Encodings.guessEncoding(binary)
+                                  : Charset.forName(name);
+        }
+        
+        @Override
+        public long getHash() {
+            return hash;
+        }
+        
+        @Override
+        public byte[] asBinary() {
+            return binary;
+        }
+        
+        @Override
+        public String asText() {
+            return new String(binary, charset);
+        }
+    }
+    
 
-
+    
+    
     private static final class ReplicatonJobImpl implements ReplicationJob {
         private final Datasource datasource;
         private final FileCache fileCache;
-        private final Consumer<byte[]> consumer;
+        private final Consumer<Data> consumer;
         private final ScheduledExecutorService executor;
         private final Duration maxCacheTime;
         private final Duration refreshPeriod;
@@ -191,7 +263,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                                  final Duration maxCacheTime,
                                  final Duration refreshPeriod,
                                  final Client client,
-                                 final Consumer<byte[]> consumer) {
+                                 final Consumer<Data> consumer) {
 
             this.maxCacheTime = maxCacheTime;
             this.refreshPeriod = refreshPeriod;
@@ -205,9 +277,6 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
             } else if (uri.getScheme().equalsIgnoreCase("http") || uri.getScheme().equalsIgnoreCase("https")) {
                 this.datasource = new HttpDatasource(uri, client);
-
-            } else if (uri.getScheme().equalsIgnoreCase("snapshot")) {
-                this.datasource = new MavenSnapshotDatasource(uri, client);
 
             } else if (uri.getScheme().equalsIgnoreCase("file")) {
                 this.datasource = new FileDatasource(uri);
@@ -247,7 +316,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
         private void loadAndNotifyConsumer() {
             try {
-                byte[] data = datasource.load();
+                Data data = datasource.load();
                 notifyConsumer(data);
 
                 // data has been accepted by the consumer -> update cache
@@ -263,7 +332,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             }
         }
 
-        private void notifyConsumer(final byte[] data) {
+        private void notifyConsumer(final Data data) {
             consumer.accept(data);   // let the consumer handle the new data
         }
 
@@ -305,23 +374,22 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
 
 
-        private static final class ConsumerAdapter implements Consumer<byte[]> {
-            private final Consumer<byte[]> consumer;
-            private final AtomicReference<Long> lastMd5 = new AtomicReference<>(Hashing.md5().newHasher().hash().asLong());
+        private static final class ConsumerAdapter implements Consumer<Data> {
+            private final Consumer<Data> consumer;
+            private final AtomicReference<Long> lastMd5 = new AtomicReference<>(0l);
 
-            public ConsumerAdapter(final Consumer<byte[]> consumer) {
+            public ConsumerAdapter(final Consumer<Data> consumer) {
                 this.consumer = consumer;
             }
 
             @Override
-            public void accept(final byte[] binary) {
-                final long md5 = Hashing.md5().newHasher().putBytes(binary).hash().asLong();
+            public void accept(final Data data) {
 
                 // data changed (new or modified)?
-                if (md5 != lastMd5.get()) {
+                if (data.getHash() != lastMd5.get()) {
                     // yes
-                    consumer.accept(binary);
-                    lastMd5.set(md5);
+                    consumer.accept(data);
+                    lastMd5.set(data.getHash());
                 }
             }
         }
@@ -341,14 +409,13 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                 return uri;
             }
 
-            public abstract byte[] load() throws ReplicationException;
+            public abstract Data load() throws ReplicationException;
 
             @Override
             public String toString() {
                 return "[" + this.getClass().getSimpleName() + "] uri=" + uri;
             }
         }
-
 
 
         private static class ClasspathDatasource extends Datasource {
@@ -358,7 +425,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             }
 
             @Override
-            public byte[] load() throws ReplicationException {
+            public Data load() throws ReplicationException {
                 ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
                 if (classLoader == null) {
                     classLoader = getClass().getClassLoader();
@@ -371,7 +438,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                 } else {
                     InputStream is = null;
                     try {
-                        return ByteStreams.toByteArray(classpathUri.openStream());
+                        return new HeuristicsDecodingData(ByteStreams.toByteArray(classpathUri.openStream()));
                     } catch (final IOException ioe) {
                         throw new ReplicationException(ioe);
                     } finally {
@@ -391,11 +458,11 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             }
 
             @Override
-            public byte[] load() {
+            public Data load() {
                 final File file = new File(getEndpoint().getPath());
                 if (file.exists()) {
                     try {
-                        return Files.toByteArray(file);
+                        return new HeuristicsDecodingData(Files.toByteArray(file));
                     } catch (IOException ioe) {
                         throw new ReplicationException(ioe);
                     }
@@ -405,7 +472,6 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                 }
             }
         }
-
 
 
 
@@ -429,11 +495,11 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             }
 
             @Override
-            public byte[] load() {
+            public Data load() {
                 return load(getEndpoint());
             }
 
-            protected byte[] load(final URI uri) {
+            protected Data load(final URI uri) {
                 Response response = null;
                 try {
 
@@ -458,8 +524,8 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
                     // success
                     if ((status / 100) == 2) {
-                        final byte[] data = response.readEntity(byte[].class);
-
+                        final Data data = new MimeTypeBasedDecodingData(response.readEntity(byte[].class), response.getHeaderString("Content-type"));
+                        
                         final String etag = response.getHeaderString("etag");
                         if (!Strings.isNullOrEmpty(etag)) {
                             // add response to cache
@@ -490,13 +556,13 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
 
             private static class CachedResponseData {
-                final static CachedResponseData EMPTY = new CachedResponseData(URI.create("http://example.org"), new byte[0], "");
+                final static CachedResponseData EMPTY = new CachedResponseData(URI.create("http://example.org"), new HeuristicsDecodingData(new byte[0]), "");
 
                 private final URI uri;
-                private final byte[] data;
+                private final Data data;
                 private final String etag;
 
-                public CachedResponseData(final URI uri, final byte[] data, final String etag) {
+                public CachedResponseData(final URI uri, final Data data, final String etag) {
                     this.uri = uri;
                     this.data = data;
                     this.etag = etag;
@@ -510,7 +576,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                     return etag;
                 }
 
-                public byte[] getData() {
+                public Data getData() {
                     return data;
                 }
             }
@@ -518,47 +584,11 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
 
 
-        // MavenSnapshotDatasource will be removed. Implemented for test purposes only
-        private static class MavenSnapshotDatasource extends HttpDatasource {
-
-            public MavenSnapshotDatasource(final URI uri, final Client client) {
-                super(uri, client);
-            }
-
-
-            @Override
-            public byte[] load() {
-                final byte[] xmlFile = load(URI.create(getEndpoint().getSchemeSpecificPart() + "/maven-metadata.xml"));
-                return load(parseNewestSnapshotUri(getEndpoint().getSchemeSpecificPart(), xmlFile));
-            }
-
-
-            private URI parseNewestSnapshotUri(final String uri, final byte[] xmlFile) {
-                try {
-                    final Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(xmlFile));
-
-                    final String artifactId = ((Element) document.getElementsByTagName("artifactId").item(0)).getTextContent();
-                    final String version = ((Element) document.getElementsByTagName("version").item(0)).getTextContent();
-
-                    Element node = (Element) document.getElementsByTagName("versioning").item(0);
-                    node = (Element) node.getElementsByTagName("snapshot").item(0);
-                    final String timestamp = ((Element) node.getElementsByTagName("timestamp").item(0)).getTextContent();
-                    final String buildNumber = ((Element) node.getElementsByTagName("buildNumber").item(0)).getTextContent();
-
-                    return URI.create(uri + "/" + artifactId + "-" + version.replace("-SNAPSHOT", "-" + timestamp + "-" + buildNumber + ".jar"));
-
-                } catch (final IOException | ParserConfigurationException | SAXException e) {
-                    throw new ReplicationException(e);
-                }
-            }
-        }
-
-
 
         private static final class FileCache extends Datasource {
             private static final String TEMPFILE_SUFFIX = ".temp";
             private static final String CACHEFILE_SUFFIX = ".cache";
-            private final File cacheDir;
+            private final File dir;
             private final String genericCacheFileName;
             private final Duration maxCacheTime;
 
@@ -569,18 +599,19 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                 try {
                     this.maxCacheTime = maxCacheTime;
                     this.genericCacheFileName =  name.replaceAll("[,:/]", "_") + "_";
-                    this.cacheDir = new File(cacheDir, "datareplicator").getCanonicalFile();
+                    this.dir = new File(cacheDir, "datareplicator").getCanonicalFile();
+                    dir.mkdirs();  
                 } catch (final IOException ioe) {
                     throw new ReplicationException(ioe);
                 }
             }
 
 
-            public void update(final byte[] data) {
+            public void update(final Data data) {
                 // creates a new cache file with timestamp
-                final File cacheFile = new File(cacheDir, genericCacheFileName + Instant.now().toEpochMilli() + CACHEFILE_SUFFIX);
+                final File cacheFile = new File(dir, genericCacheFileName + Instant.now().toEpochMilli() + CACHEFILE_SUFFIX);
                 cacheFile.getParentFile().mkdirs();
-                final File tempFile = new File(cacheDir, UUID.randomUUID().toString() + TEMPFILE_SUFFIX);
+                final File tempFile = new File(dir, UUID.randomUUID().toString() + TEMPFILE_SUFFIX);
                 tempFile.getParentFile().mkdirs();
 
 
@@ -596,14 +627,14 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                     try {
                         // write the new cache file
                         os = new FileOutputStream(tempFile);
-                        os.write(data);
+                        os.write(data.asBinary());
                         os.close();
 
                         // and commit it (this renaming approach avoids "half-written" cache files. A cache file is there or not)
                         tempFile.renameTo(cacheFile);
                     } finally {
                         Closeables.close(os, true);  // close os in any case
-                        tempFile.delete();  // make sure that temp file will be deleted even though something failed
+                        tempFile.delete();           // make sure that temp file will be deleted even though something failed
                     }
 
                     // perform clean up to remove expired file
@@ -616,13 +647,13 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
 
             @Override
-            public byte[] load() {
+            public Data load() {
                 final Optional<File> cacheFile = getNewestCacheFile();
                 if (cacheFile.isPresent()) {
                     FileInputStream is = null;
                     try {
                         is = new FileInputStream(cacheFile.get());
-                        return ByteStreams.toByteArray(is);
+                        return new HeuristicsDecodingData(ByteStreams.toByteArray(is));
                     } catch (final IOException ioe) {
                         throw new ReplicationException("loading cache file " + cacheFile.get()  + " failed", ioe);
                     } finally {
@@ -652,7 +683,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                             newestTimestamp = timestamp;
                         }
                     } catch (NumberFormatException nfe) {
-                        LOG.debug(cacheDir.getAbsolutePath() + " contains cache file with invalid name " + file.getName() + " Ignoring it");
+                        LOG.debug(dir.getAbsolutePath() + " contains cache file with invalid name " + file.getName() + " Ignoring it");
                     }
                 }
 
@@ -671,11 +702,11 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
 
             private ImmutableList<File> getCacheFiles() {
-                return ImmutableList.copyOf(cacheDir.listFiles())
-                        .stream()
-                        .filter(file -> file.getName().endsWith(CACHEFILE_SUFFIX))
-                        .filter(file -> file.getName().startsWith(genericCacheFileName))
-                        .collect(Immutables.toList());
+                return ImmutableList.copyOf(dir.listFiles())
+                                               .stream()
+                                               .filter(file -> file.getName().endsWith(CACHEFILE_SUFFIX))
+                                               .filter(file -> file.getName().startsWith(genericCacheFileName))
+                                               .collect(Immutables.toList());
             }
 
 
@@ -694,12 +725,12 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             private void removeExpiredTempFiles() {
                 // remove expired temp files. temp file should exists for few millis or seconds only.
                 final long minAgeTime = Instant.now().minus(Duration.ofDays(7)).toEpochMilli();
-                ImmutableList.copyOf(cacheDir.listFiles())
-                        .stream()
-                        .filter(file -> file.getName().endsWith(TEMPFILE_SUFFIX))
-                        .filter(file -> file.lastModified() < minAgeTime)           // filter old temp file (days!)
-                        .collect(Immutables.toList())
-                        .forEach(file -> file.delete());                            // and delete it
+                ImmutableList.copyOf(dir.listFiles())
+                             .stream()
+                             .filter(file -> file.getName().endsWith(TEMPFILE_SUFFIX))
+                             .filter(file -> file.lastModified() < minAgeTime)           // filter old temp file (days!)
+                             .collect(Immutables.toList())
+                             .forEach(file -> file.delete());                            // and delete it
             }
 
 
@@ -710,9 +741,9 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                 if (newest.isPresent()) {
                     final long newestTime = parseTimestamp(newest.get());
                     getCacheFiles().stream()
-                            .filter(file -> parseTimestamp(file) < newestTime)   // filter expired cache files
-                            .collect(Immutables.toList())
-                            .forEach(file -> file.delete());                     // and delete it
+                                   .filter(file -> parseTimestamp(file) < newestTime)   // filter expired cache files
+                                   .collect(Immutables.toList())
+                                   .forEach(file -> file.delete());                     // and delete it
                 }
             }
 

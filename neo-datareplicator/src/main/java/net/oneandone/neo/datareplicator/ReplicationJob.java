@@ -89,10 +89,10 @@ public interface ReplicationJob extends Closeable {
     static ReplicationJobBuilder source(final URI uri) {
         Preconditions.checkNotNull(uri);
         return new ReplicationJobBuilderImpl(uri,
-                DEFAULT_FAIL_ON_INITFAILURE,
-                DEFAULT_CACHEDIR,
-                DEFAULT_MAX_CACHETIME,
-                DEFAULT_REFRESHPERIOD,
-                null);
+                                             DEFAULT_FAIL_ON_INITFAILURE,
+                                             DEFAULT_CACHEDIR,
+                                             DEFAULT_MAX_CACHETIME,
+                                             DEFAULT_REFRESHPERIOD,
+                                             null);
     }
 }

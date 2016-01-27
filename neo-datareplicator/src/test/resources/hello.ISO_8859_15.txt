@@ -1,0 +1,6 @@
+Dutch=Hello wereld
+English=Hello world
+French=Bonjour monde
+German=Hallo, schöne Welt
+Portuguese=Olá mundo
+Spanish=Hola mundo
