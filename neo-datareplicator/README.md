@@ -22,12 +22,8 @@ public class HostnameValidator implements Closeable {
         this.whitelistReplicationJob = ReplicationJob.source(hostnameWhitelistUri)
                                                      .startConsumingTextList(this::updateWhilelist);
     }
-       
-    @Override
-    public void close() {
-        whitelistReplicationJob.close();
-    }
-
+    
+    // replicator-related parsing code
     private void updateWhilelist(final ImmutableList<String> whitelist) throws IllegalArgumentException {
         // perform some validations. May throw a runtime exception
         // ...
@@ -35,7 +31,14 @@ public class HostnameValidator implements Closeable {
         this.whitelist = whitelist;
     }
     
-    public boolean vaildate(final String hostname) {
+	// component lify cycle code
+    @Override
+    public void close() {
+        whitelistReplicationJob.close();
+    }
+
+    // business code
+    public boolean validate(final String hostname) {
         if (whitelist.contains(hostname)) {
             return true;	
         }
@@ -103,18 +106,21 @@ public class RenderingService implements Closeable {
                                                      .startConsumingBinary(this::unpackTemplatesZipfile);
     }
   
-    @Override
-    public void close() {
-        whitelistReplicationJob.close();
-    }
-  
+    // replicator-related parsing code
     private void unpackTemplatesZipfile(final ImmutableList<byte[]> zipped) throws RuntimeException {
         // perform unzip and some validations. May throw a runtime exception
         // ...
         
         this.templates = templates;
     }
+
+    // component lify cycle code
+    @Override
+    public void close() {
+        whitelistReplicationJob.close();
+    }
   
+    // business code
     public String render(final String templatename, final Object... params) {
         // ...	
     }
