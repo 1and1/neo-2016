@@ -38,9 +38,9 @@ using version `0.1-SNAPSHOT`.
 Learn about Neo
 ------------------
 Neo includes following modules:
-- [Neo DataReplicator](neo-datareplicator) Pull-based client lib to replicated uri-addressed resources in a resilient way
-- [Neo HTTP Problem support](neo-problem) Java implementation of [Neo Problem Details for HTTP APIs support](https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-03)
-- [Neo Collections](neo-collect) Convenience artefacts to use Guava immutable collections in context of Java8
+- [Collections](neo-collect) - Convenience artefacts to use Guava immutable collections in context of Java8
+- [DataReplicator](neo-datareplicator) - Pull-based client lib to replicated uri-addressed resources in a resilient way
+- [HTTP Problem support](neo-problem) - Java implementation of [Neo Problem Details for HTTP APIs support](https://tools.ietf.org/html/draft-ietf-appsawg-http-problem-03)
 
 Links
 -----

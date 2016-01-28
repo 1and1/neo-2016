@@ -1,4 +1,4 @@
-DataReplicator
+Neo DataReplicator
 ==============
 
 The DataReplicator is a ***pull-based client*** lib to replicated uri-addressed resources in a ***resilient*** way. Typically the replicator is used to replicate central managed resources such as configurations, template files, ACL lists or IP lists. 
