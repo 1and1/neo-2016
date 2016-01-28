@@ -65,6 +65,21 @@ public class ReplicatorSupportedSchemesTest {
 
 
         
+        // big5 with charset
+        job = ReplicationJob.source(server.getBasepath() + "hello.big5.txt?charset=big5")
+                            .startConsumingText(testConsumer);
+        Utils.assertMapEntryEquals(Utils.loadFileAsMap("hello.utf8.txt", "UTF-8"), Utils.toMap(testConsumer.waitForText()), "Chinese");
+        job.close();
+        
+        // big5 without charset
+/* TODO does not work -> CharsetDetector guess the wrong mime type
+        job = ReplicationJob.source(server.getBasepath() + "hello.utf8.txt")
+                            .startConsumingText(testConsumer);
+        Utils.assertMapEntryEquals(Utils.loadFileAsMap("hello.big5.txt", "UTF-8"), Utils.toMap(testConsumer.waitForText()), "Chinese");
+        job.close();
+*/
+        
+        
         // utf-8 with BOM with charset
         job = ReplicationJob.source(server.getBasepath() + "hello.utf8.withbom.txt?charset=utf-8")
                             .startConsumingText(testConsumer);

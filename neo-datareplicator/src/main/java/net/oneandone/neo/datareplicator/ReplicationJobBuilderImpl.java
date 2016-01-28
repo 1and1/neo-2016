@@ -515,8 +515,8 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
                     // success
                     if ((status / 100) == 2) {
-                        final MediaType mediaType = (response.getHeaderString("Content-type") == null) ? MediaType.valueOf(response.getHeaderString("Content-type"))
-                                                                                                       : MediaType.APPLICATION_OCTET_STREAM_TYPE;
+                        final MediaType mediaType = (response.getHeaderString("Content-type") == null) ? MediaType.APPLICATION_OCTET_STREAM_TYPE
+                                                                                                       : MediaType.valueOf(response.getHeaderString("Content-type"));
                         final Data data = new MimeTypeBasedDecodingData(response.readEntity(byte[].class), mediaType);
                         
                         final String etag = response.getHeaderString("etag");

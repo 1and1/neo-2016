@@ -36,7 +36,7 @@ public class BrokenResourceServerTest {
         
         WebServer server = WebServer.withServlet(new TestServlet())
                                     .start();
-        String serverResource = server.getBasepath() + "hello.utf8.txt?charset=utf-8"; 
+        String serverResource = server.getBasepath() + "hello.big5.txt?charset=big5"; 
         
         File cacheDir = Files.createTempDir();
         InMemoryConsumer testConsumer = new InMemoryConsumer();
@@ -47,7 +47,7 @@ public class BrokenResourceServerTest {
         ReplicationJob job = ReplicationJob.source(serverResource)
                                            .withCacheDir(cacheDir)
                                            .startConsumingText(testConsumer);
-        Utils.assertMapEntryEquals(Utils.loadFileAsMap("hello.utf8.txt", "UTF-8"), Utils.toMap(testConsumer.waitForText()), "Greek");
+        Utils.assertMapEntryEquals(Utils.loadFileAsMap("hello.utf8.txt", "UTF-8"), Utils.toMap(testConsumer.waitForText()), "Chinese");
         job.close();
 
         
@@ -57,12 +57,11 @@ public class BrokenResourceServerTest {
         } catch (InterruptedException ignore) { } 
         
         
-        
         // successful replication -> event though resource server is down
         job = ReplicationJob.source(serverResource)
                             .withCacheDir(cacheDir)
                             .startConsumingText(testConsumer);
-        Utils.assertMapEntryEquals(Utils.loadFileAsMap("hello.utf8.txt", "UTF-8"), Utils.toMap(testConsumer.waitForText()), "Greek");
+        Utils.assertMapEntryEquals(Utils.loadFileAsMap("hello.utf8.txt", "UTF-8"), Utils.toMap(testConsumer.waitForText()), "Chinese");
         job.close();
         
         
