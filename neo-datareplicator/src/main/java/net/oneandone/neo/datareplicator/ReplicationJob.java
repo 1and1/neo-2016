@@ -34,7 +34,7 @@ public interface ReplicationJob extends Closeable {
 
     public static final boolean DEFAULT_FAIL_ON_INITFAILURE = false;
     public static final File DEFAULT_CACHEDIR = new File(".");
-    public static final Duration DEFAULT_MAX_CACHETIME = Duration.ofDays(4);
+    public static final Duration DEFAULT_MAX_CACHETIME = Duration.ofDays(30);
     public static final Duration DEFAULT_REFRESHPERIOD = Duration.ofSeconds(60);
 
 

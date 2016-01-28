@@ -92,11 +92,11 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
     public ReplicationJobBuilderImpl withRefreshPeriod(final Duration refreshPeriod) {
         Preconditions.checkNotNull(refreshPeriod);
         return new ReplicationJobBuilderImpl(this.uri,
-                this.failOnInitFailure,
-                this.cacheDir,
-                this.maxCacheTime,
-                refreshPeriod,
-                this.client);
+                                             this.failOnInitFailure,
+                                             this.cacheDir,
+                                             this.maxCacheTime,
+                                             refreshPeriod,
+                                             this.client);
     }
 
     @Override
@@ -294,9 +294,9 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             // start scheduler for periodically reloadings
             this.executor = Executors.newScheduledThreadPool(0);
             executor.scheduleWithFixedDelay(() -> loadAndNotifyConsumer(),
-                    refreshPeriod.toMillis(),
-                    refreshPeriod.toMillis(),
-                    TimeUnit.MILLISECONDS);
+                                            refreshPeriod.toMillis(),
+                                            refreshPeriod.toMillis(),
+                                            TimeUnit.MILLISECONDS);
         }
 
         @Override
@@ -305,7 +305,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             datasource.close();
         }
 
-        private void loadAndNotifyConsumer() {
+        private void loadAndNotifyConsumer() throws RuntimeException {
             try {
                 Data data = datasource.load();
                 notifyConsumer(data);
@@ -323,8 +323,8 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             }
         }
 
-        private void notifyConsumer(final Data data) {
-            consumer.accept(data);   // let the consumer handle the new data
+        private void notifyConsumer(final Data data) throws RuntimeException {
+            consumer.accept(data);   // let the consumer handle the new data. Consumer may throw a runtime exception 
         }
 
         @Override
