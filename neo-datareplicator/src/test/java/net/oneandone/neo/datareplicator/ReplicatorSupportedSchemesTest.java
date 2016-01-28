@@ -124,7 +124,7 @@ public class ReplicatorSupportedSchemesTest {
         InMemoryConsumer testConsumer = new InMemoryConsumer();
         
         File file = new File("src" + File.separator + "test" + File.separator + "resources" + File.separator + "hello.utf8.txt");
-        ReplicationJob job = ReplicationJob.source(URI.create(("file:/" + file.getCanonicalPath()).replace("\\", "/")))
+        ReplicationJob job = ReplicationJob.source(file.toURI())
                                            .startConsumingText(testConsumer);
         Utils.assertMapEntryEquals(Utils.loadFileAsMap("hello.utf8.txt", "UTF-8"), Utils.toMap(testConsumer.waitForText()), "Greek");
         job.close();
