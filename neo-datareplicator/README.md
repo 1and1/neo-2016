@@ -57,7 +57,7 @@ public class HostnameValidator implements Closeable {
 To use a custom check frequency the replicator provides the `withRefreshPeriod` method  
 ```
         this.whitelistReplicationJob = ReplicationJob.source(hostnameWhitelistUri)
-                                                     .withRefreshPeriod(Duration.ofMillis(5))
+                                                     .withRefreshPeriod(Duration.ofMinutes(5))
                                                      .startConsumingTextList(this::updateWhilelist);
 
 ```
@@ -65,7 +65,7 @@ To use a custom check frequency the replicator provides the `withRefreshPeriod` 
 The max cache time can be modified by using `withMaxCacheTime` method  
 ```
         this.whitelistReplicationJob = ReplicationJob.source(hostnameWhitelistUri)
-                                                     .withRefreshPeriod(Duration.ofMillis(5))
+                                                     .withRefreshPeriod(Duration.ofMinutes(5))
                                                      .withMaxCacheTime(Duration.ofDays(7))
                                                      .startConsumingTextList(this::updateWhilelist);
 
@@ -74,7 +74,7 @@ The max cache time can be modified by using `withMaxCacheTime` method
 If the replicator should fail on start the `withFailOnInitFailure` method will be used. If true, the replicator will throw a runtime exception, if the resource is not available within the initialization phase.  
 ```
         this.whitelistReplicationJob = ReplicationJob.source(hostnameWhitelistUri)
-                                                     .withRefreshPeriod(Duration.ofMillis(5))
+                                                     .withRefreshPeriod(Duration.ofMinutes(5))
                                                      .withMaxCacheTime(Duration.ofDays(7))
                                                      .withFailOnInitFailure(true)
                                                      .startConsumingTextList(this::updateWhilelist);
