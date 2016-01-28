@@ -21,6 +21,7 @@ package net.oneandone.neo.datareplicator;
 
 import java.io.Closeable;
 
+
 import java.io.File;
 
 import java.io.FileInputStream;
@@ -30,8 +31,10 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -50,8 +53,8 @@ import net.oneandone.neo.collect.Immutables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.hash.Hashing;
@@ -149,13 +152,6 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
         return startConsuming(data -> consumer.accept(data.asText()));
     }
 
-    @Override
-    public ReplicationJob startConsumingTextList(final Consumer<ImmutableList<String>> consumer) {
-        return startConsumingText(text -> consumer.accept(ImmutableList.copyOf(Splitter.onPattern("\r?\n")
-                                                  .trimResults()
-                                                  .splitToList(text))));
-    }
-
     private ReplicationJob startConsuming(final Consumer<Data> consumer) {
         Preconditions.checkNotNull(consumer);
         return new ReplicatonJobImpl(uri,
@@ -198,51 +194,46 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             return binary;
         }
         
-
         @Override
         public String asText() {
-            return new String(binary, Encodings.guessEncoding(binary));
+            return new String(binary, getCharset());
+        }
+        
+        protected Charset getCharset() {
+            return CharsetDetector.guessEncoding(binary);
         }
     }
 
 
     
     
-    private static class MimeTypeBasedDecodingData implements Data {
-        private final byte[] binary;
-        private final long hash;
-        private final Charset charset; 
+    private static class MimeTypeBasedDecodingData extends HeuristicsDecodingData {
+        private final Charset charset;
         
-        public MimeTypeBasedDecodingData(final byte[] binary, final String mimeType) {
-            this.binary = binary;
-            this.hash = Hashing.md5().newHasher().putBytes(binary).hash().asLong();
-            this.charset = getCharset(MediaType.valueOf(mimeType));
+        public MimeTypeBasedDecodingData(final byte[] binary, final MediaType mediaType) {
+            this(binary, mediaType.getParameters().get(MediaType.CHARSET_PARAMETER));
         }
         
-        private Charset getCharset(MediaType mediaType) {
-            final String name = (mediaType == null) ? null
-                                                    : mediaType.getParameters().get(MediaType.CHARSET_PARAMETER);
-            return (name == null) ? Encodings.guessEncoding(binary)
-                                  : Charset.forName(name);
+        private MimeTypeBasedDecodingData(final byte[] binary, final String charsetname) {
+            this(binary, (charsetname == null) ? null : Charset.forName(charsetname));
         }
         
+        private MimeTypeBasedDecodingData(final byte[] binary, final Charset charset) {
+            super((charset == null) ? binary : toUtf8EncodedBinary(binary, charset));  
+            this.charset = (charset == null) ? null : Charsets.UTF_8;
+        }
+        
+        private static byte[] toUtf8EncodedBinary(byte[] binary, final Charset charset) {
+            return new String(binary, charset).getBytes(Charsets.UTF_8);
+        }
+
         @Override
-        public long getHash() {
-            return hash;
-        }
-        
-        @Override
-        public byte[] asBinary() {
-            return binary;
-        }
-        
-        @Override
-        public String asText() {
-            return new String(binary, charset);
+        protected Charset getCharset() {
+            return (charset == null) ? super.getCharset()
+                                     : charset;
         }
     }
     
-
     
     
     private static final class ReplicatonJobImpl implements ReplicationJob {
@@ -524,7 +515,9 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
                     // success
                     if ((status / 100) == 2) {
-                        final Data data = new MimeTypeBasedDecodingData(response.readEntity(byte[].class), response.getHeaderString("Content-type"));
+                        final MediaType mediaType = (response.getHeaderString("Content-type") == null) ? MediaType.valueOf(response.getHeaderString("Content-type"))
+                                                                                                       : MediaType.APPLICATION_OCTET_STREAM_TYPE;
+                        final Data data = new MimeTypeBasedDecodingData(response.readEntity(byte[].class), mediaType);
                         
                         final String etag = response.getHeaderString("etag");
                         if (!Strings.isNullOrEmpty(etag)) {
@@ -598,14 +591,18 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
                 try {
                     this.maxCacheTime = maxCacheTime;
-                    this.genericCacheFileName =  name.replaceAll("[,:/]", "_") + "_";
                     this.dir = new File(cacheDir, "datareplicator").getCanonicalFile();
-                    dir.mkdirs();  
+                    dir.mkdirs();
+                    
+                    // filename is base64 encoded to avoid trouble with special chars
+                    this.genericCacheFileName = Base64.getEncoder().encodeToString(name.getBytes(Charsets.UTF_8)) + "_";  
+                      
                 } catch (final IOException ioe) {
                     throw new ReplicationException(ioe);
                 }
             }
 
+            
 
             public void update(final Data data) {
                 // creates a new cache file with timestamp
@@ -613,7 +610,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                 cacheFile.getParentFile().mkdirs();
                 final File tempFile = new File(dir, UUID.randomUUID().toString() + TEMPFILE_SUFFIX);
                 tempFile.getParentFile().mkdirs();
-
+ 
 
                 /////
                 // why this "newest cache file" approach?
@@ -631,10 +628,9 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                         os.close();
 
                         // and commit it (this renaming approach avoids "half-written" cache files. A cache file is there or not)
-                        tempFile.renameTo(cacheFile);
+                        java.nio.file.Files.move(tempFile.toPath(), cacheFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
                     } finally {
                         Closeables.close(os, true);  // close os in any case
-                        tempFile.delete();           // make sure that temp file will be deleted even though something failed
                     }
 
                     // perform clean up to remove expired file

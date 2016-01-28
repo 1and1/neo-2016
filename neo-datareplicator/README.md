@@ -10,7 +10,7 @@ Modifications of the resource to replicate will be detected by running periodica
 
 The replicator provides resiliency by ***caching the replicated resource on the local node***. The means the resource will also be available, if the resource server is down by falling back to the cached resource. Each time a resource is replicated it will be stored on the local node. If the replication job will be started, first the replicator tries to replicate the resource. If the resource is not available, the replicator will try to read the local stored resource of a former replication. By default the cached resource will be valid until 30 days. After this time the cached resource will be removed. 
 
-In the example code below a new replicator job will be started within the constructor of the `HostnameValidator` class. Each time the resource is modified the `updateWhilelist` method is called. The `updateWhilelist` method will throw an exception, if the data is invalid. In this case the replicator will not cache the resource. If the example `HostnameValidator` class is closed, the replicator job will be stopped by performing the `close` method. The replicator job uses an thread pool internally and should be stopped in an explicit way.     
+In the example code below a new replicator job will be started within the constructor of the `HostnameValidator` class. Each time the resource is modified the `updateWhilelist` method is called. The `updateWhilelist` method will throw a runtime exception, if the data is invalid. In this case the replicator will not cache the resource. If the example `HostnameValidator` class is closed, the replicator job will be stopped by performing the `close` method. The replicator job uses an thread pool internally and should be stopped in an explicit way.     
 
 
 ```
@@ -20,18 +20,20 @@ public class HostnameValidator implements Closeable {
     
     public HostnameValidator(final URI hostnameWhitelistUri) {
         this.whitelistReplicationJob = ReplicationJob.source(hostnameWhitelistUri)
-                                                     .startConsumingTextList(this::updateWhilelist);
+                                                     .startConsumingText(this::updateWhilelist);
     }
     
     // replicator-related parsing code
-    private void updateWhilelist(final ImmutableList<String> whitelist) throws IllegalArgumentException {
-        // perform some validations. May throw a runtime exception
-        // ...
+    private void updateWhilelist(final String whitelistData) throws IllegalArgumentException {
+        final ImmutableList<String> newWhitelist = ImmutableList.copyOf(Splitter.on("\n").trimResults().split(whitelistData));
+        if (newWhitelist.isEmpty()) {
+            throw new IllegalArgumentException("list must not be empty");
+        }
         
-        this.whitelist = whitelist;
+        this.whitelist = newWhitelist;
     }
     
-	// component lify cycle code
+    // component lify cycle code
     @Override
     public void close() {
         whitelistReplicationJob.close();
@@ -40,12 +42,14 @@ public class HostnameValidator implements Closeable {
     // business code
     public boolean validate(final String hostname) {
         if (whitelist.contains(hostname)) {
-            return true;	
+            return true;    
         }
 
-        // ...	
+        // ...  
+        return false;
     }
 } 
+
 ```
 
 
@@ -111,7 +115,7 @@ public class RenderingService implements Closeable {
         // perform unzip and some validations. May throw a runtime exception
         // ...
         
-        this.templates = templates;
+        this.templates = newTemplates;
     }
 
     // component lify cycle code

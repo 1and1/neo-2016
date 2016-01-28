@@ -36,7 +36,7 @@ import com.google.common.collect.ImmutableList;
 // This depends on the amount of code and on the license of the code to copy  
 
 
-class Encodings {
+class CharsetDetector {
 
     private static final ImmutableList<Charset> CHARSETS_TO_TESTED = ImmutableList.of(Charset.forName("UTF-8"),
                                                                                       Charset.forName("ISO-8859-15"), 
