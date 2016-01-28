@@ -12,7 +12,7 @@
 ## Proposals
  * Users may implement an JAXRS-ExceptionMapper for global mapping of user-supplied exceptions
  * Local mapping of exceptions for single resource-methods by reusable handlers. Unfortunately no automatic mapping for all methods inside a resource.
-'''
+```java
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -47,5 +47,6 @@
             return () -> f.apply(this);
         }
     }
-'''
+```
+
 
