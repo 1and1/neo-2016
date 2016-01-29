@@ -49,3 +49,4 @@ ehthumbs.db
 /neo-collect/.settings
 /neo-collect/.classpath
 /neo-datareplicator/datareplicator
+/neo-datareplicator/datareplicator_cache

@@ -67,7 +67,7 @@ public interface ReplicationJobBuilder {
      * @return the new instance of the data replicator
      */
     ReplicationJobBuilder withFailOnInitFailure(final boolean failOnInitFailure);
-
+    
     /**
      *
      * @param cacheDir  the cache dir (default is {@link ReplicationJob#DEFAULT_CACHEDIR})

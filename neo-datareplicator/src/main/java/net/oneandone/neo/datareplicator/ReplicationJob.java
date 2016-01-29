@@ -20,6 +20,7 @@ package net.oneandone.neo.datareplicator;
 import java.io.Closeable;
 import java.io.File;
 import java.net.URI;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Optional;
 
@@ -33,7 +34,8 @@ import com.google.common.base.Preconditions;
 public interface ReplicationJob extends Closeable {
 
     public static final boolean DEFAULT_FAIL_ON_INITFAILURE = false;
-    public static final File DEFAULT_CACHEDIR = new File(".");
+    public static final File DEFAULT_CACHEDIR = new File(Paths.get(".").toAbsolutePath().normalize().toString() +  //working dir 
+                                                         File.separator + "datareplicator_cache"); 
     public static final Duration DEFAULT_MAX_CACHETIME = Duration.ofDays(30);
     public static final Duration DEFAULT_REFRESHPERIOD = Duration.ofSeconds(60);
 

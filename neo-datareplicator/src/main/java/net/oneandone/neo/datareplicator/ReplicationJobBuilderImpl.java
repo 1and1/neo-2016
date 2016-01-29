@@ -591,7 +591,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
                 try {
                     this.maxCacheTime = maxCacheTime;
-                    this.dir = new File(cacheDir, "datareplicator").getCanonicalFile();
+                    this.dir = cacheDir.getCanonicalFile();
                     dir.mkdirs();
                     
                     // filename is base64 encoded to avoid trouble with special chars
