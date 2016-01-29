@@ -13,19 +13,17 @@
  * Users may implement an JAXRS-ExceptionMapper for global mapping of user-supplied exceptions
  * Local mapping of exceptions for single resource-methods by reusable handlers. Unfortunately no automatic mapping for all methods inside a resource.
 ```java
+
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("job")
     public JobRepresentation schedule(List<ResourceRepresentation> resources) {
-        return WrappableSupplier.of(() -> {
+        return handleMyRuntimeExceptions(() -> {
  
             return doSchedule(resources);
 
-        }) //
-                .wrappedBy(this::handleMyRuntimeExceptions) // custom exception handler usable for multiple resource methods
-                .wrappedBy((wrapped) -> methodMetrics(wrapped, "schedule")) // optional chained wrapper: measuring metrics
-                .get();
+        });
     }
 
     private <T> T handleMyRuntimeExceptions(Supplier<T> wrapped) {
@@ -34,6 +32,24 @@
         } catch(MyRuntimeException e) {
             throw buildProblemException(e);
         }
+    }
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("job")
+    public JobRepresentation schedule(List<ResourceRepresentation> resources) {
+        
+        // do we really need chaining of Handlers?
+
+        return WrappableSupplier.of(() -> {
+ 
+            return doSchedule(resources);
+
+        }) //
+                .wrappedBy(this::handleMyRuntimeExceptions) // custom exception handler usable for multiple resource methods
+                .wrappedBy((wrapped) -> methodMetrics(wrapped, "schedule")) // optional chained wrapper: measuring metrics
+                .get();
     }
 
     @FunctionalInterface
