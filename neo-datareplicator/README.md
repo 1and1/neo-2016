@@ -58,7 +58,7 @@ To use a custom check frequency the replicator provides the `withRefreshPeriod` 
 ```
         this.whitelistReplicationJob = ReplicationJob.source(hostnameWhitelistUri)
                                                      .withRefreshPeriod(Duration.ofMinutes(5))
-                                                     .startConsumingTextList(this::updateWhilelist);
+                                                     .startConsumingText(this::updateWhilelist);
 ```
 
 The max cache time can be modified by using `withMaxCacheTime` method  
@@ -66,7 +66,7 @@ The max cache time can be modified by using `withMaxCacheTime` method
         this.whitelistReplicationJob = ReplicationJob.source(hostnameWhitelistUri)
                                                      .withRefreshPeriod(Duration.ofMinutes(5))
                                                      .withMaxCacheTime(Duration.ofDays(7))
-                                                     .startConsumingTextList(this::updateWhilelist);
+                                                     .startConsumingText(this::updateWhilelist);
 ```
 
 If the replicator should fail on start the `withFailOnInitFailure` method will be used. If true, the replicator will throw a runtime exception, if the resource is not available within the initialization phase.  
@@ -75,7 +75,7 @@ If the replicator should fail on start the `withFailOnInitFailure` method will b
                                                      .withRefreshPeriod(Duration.ofMinutes(5))
                                                      .withMaxCacheTime(Duration.ofDays(7))
                                                      .withFailOnInitFailure(true)
-                                                     .startConsumingTextList(this::updateWhilelist);
+                                                     .startConsumingText(this::updateWhilelist);
 ```
 
 The cache directory can be customized by using the `withCacheDir` method. By default the cache directory is a subdirectory of the working directory.  
@@ -86,10 +86,10 @@ The cache directory can be customized by using the `withCacheDir` method. By def
                                                      .withMaxCacheTime(Duration.ofDays(7))
                                                      .withFailOnInitFailure(true)
 													 .withCacheDir(cacheDir)
-                                                     .startConsumingTextList(this::updateWhilelist);
+                                                     .startConsumingText(this::updateWhilelist);
 ```
 
-To retieve http(s) addressed resource the replicator uses a [JAX-RS client](https://docs.oracle.com/javaee/7/api/javax/ws/rs/client/Client.html) internally. By using the `withClient` method the user-specific client instance will be used instead.
+To retrieve http(s) addressed resource the replicator uses a [JAX-RS client](https://docs.oracle.com/javaee/7/api/javax/ws/rs/client/Client.html) internally. By using the `withClient` method the user-specific client instance will be used instead.
 ```
         final File cacheDir = ...
 		final Client client = ...
@@ -99,7 +99,7 @@ To retieve http(s) addressed resource the replicator uses a [JAX-RS client](http
                                                      .withFailOnInitFailure(true)
 													 .withCacheDir(cacheDir)
 													 .withClient(client)
-                                                     .startConsumingTextList(this::updateWhilelist);
+                                                     .startConsumingText(this::updateWhilelist);
 ```
 
 
