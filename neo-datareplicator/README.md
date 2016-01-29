@@ -89,7 +89,7 @@ The cache directory can be customized by using the `withCacheDir` method. By def
                                                      .startConsumingTextList(this::updateWhilelist);
 ```
 
-To retieve http(s) addressed resource the replicator uses a [JAX-RS client](https://docs.oracle.com/javaee/7/api/javax/ws/rs/client/Client.html) internally. By using the `withClient` method the user-specific client instance will be used.
+To retieve http(s) addressed resource the replicator uses a [JAX-RS client](https://docs.oracle.com/javaee/7/api/javax/ws/rs/client/Client.html) internally. By using the `withClient` method the user-specific client instance will be used instead.
 ```
         final File cacheDir = ...
 		final Client client = ...
