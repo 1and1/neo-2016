@@ -223,7 +223,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             this.charset = (charset == null) ? null : Charsets.UTF_8;
         }
         
-        private static byte[] toUtf8EncodedBinary(byte[] binary, final Charset charset) {
+        private static byte[] toUtf8EncodedBinary(final byte[] binary, final Charset charset) {
             return new String(binary, charset).getBytes(Charsets.UTF_8);
         }
 
@@ -307,7 +307,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
         private void loadAndNotifyConsumer() throws RuntimeException {
             try {
-                Data data = datasource.load();
+                final Data data = datasource.load();
                 notifyConsumer(data);
 
                 // data has been accepted by the consumer -> update cache
@@ -349,7 +349,8 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
         @Override
         public Optional<Duration> getExpiredTimeSinceRefreshError() {
-            return lastRefreshError.get().map(time -> Duration.between(time, Instant.now()));
+            return lastRefreshError.get()
+                                   .map(time -> Duration.between(time, Instant.now()));
         }
 
 
