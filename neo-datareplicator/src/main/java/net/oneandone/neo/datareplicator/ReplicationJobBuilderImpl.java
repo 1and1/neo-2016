@@ -592,7 +592,10 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                 try {
                     this.maxCacheTime = maxCacheTime;
                     this.dir = cacheDir.getCanonicalFile();
-                    dir.mkdirs();
+                    dir.mkdirs();  // will create cache dir, if necessary
+                    if (!dir.exists()) {
+                        throw new ReplicationException("could not create cache dir " + cacheDir);
+                    }
                     
                     // filename is base64 encoded to avoid trouble with special chars
                     this.genericCacheFileName = Base64.getEncoder().encodeToString(name.getBytes(Charsets.UTF_8)) + "_";  
@@ -607,9 +610,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             public void update(final Data data) {
                 // creates a new cache file with timestamp
                 final File cacheFile = new File(dir, genericCacheFileName + Instant.now().toEpochMilli() + CACHEFILE_SUFFIX);
-                cacheFile.getParentFile().mkdirs();
                 final File tempFile = new File(dir, UUID.randomUUID().toString() + TEMPFILE_SUFFIX);
-                tempFile.getParentFile().mkdirs();
  
 
                 /////

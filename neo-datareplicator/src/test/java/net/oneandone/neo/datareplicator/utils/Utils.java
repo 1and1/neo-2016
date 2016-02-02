@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.oneandone.neo.datareplicator;
+package net.oneandone.neo.datareplicator.utils;
 
 
 
@@ -28,7 +28,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 
 
-class Utils {
+public class Utils {
     
     private Utils() { }
    

@@ -28,6 +28,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import net.oneandone.neo.datareplicator.utils.InMemoryConsumer;
+import net.oneandone.neo.datareplicator.utils.TestServlet;
+import net.oneandone.neo.datareplicator.utils.Utils;
+import net.oneandone.neo.datareplicator.utils.WebServer;
+
 
 public class ReplicatorSupportedSchemesTest {
     

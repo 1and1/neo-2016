@@ -31,6 +31,11 @@ import org.junit.Test;
 
 import com.google.common.io.Files;
 
+import net.oneandone.neo.datareplicator.utils.InMemoryConsumer;
+import net.oneandone.neo.datareplicator.utils.TestServlet;
+import net.oneandone.neo.datareplicator.utils.Utils;
+import net.oneandone.neo.datareplicator.utils.WebServer;
+
 
 public class ExpiredFilesCleanupTest {
     

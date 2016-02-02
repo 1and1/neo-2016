@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.oneandone.neo.datareplicator;
+package net.oneandone.neo.datareplicator.utils;
 
 
 
@@ -30,7 +30,7 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.common.io.Files;
 
 
-class TestServlet extends HttpServlet {
+public class TestServlet extends HttpServlet {
     private static final long serialVersionUID = -1136798776740561582L;
     
     @Override

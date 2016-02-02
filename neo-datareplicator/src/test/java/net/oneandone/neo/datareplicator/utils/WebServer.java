@@ -1,4 +1,4 @@
-package net.oneandone.neo.datareplicator;
+package net.oneandone.neo.datareplicator.utils;
 
 import java.io.Closeable;
 
