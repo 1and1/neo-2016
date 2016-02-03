@@ -1,7 +1,7 @@
 Neo DataReplicator
 ==============
 
-The DataReplicator is a ***pull-based client*** lib to replicated uri-addressed resources in a ***resilient*** way. Typically the replicator is used to replicate central managed resources such as configurations, template files, ACL lists or IP lists. 
+The DataReplicator is a ***pull-based client*** lib to replicated uri-addressed resources in a ***resilient*** way. Typically the replicator is used to replicate central managed resources such as configurations, template files, schema files, ACL lists or IP lists. 
 
 The replicator uses a uri to address the resource to replicate. Currently the [uri schemes](https://tools.ietf.org/html/rfc3986) `http`, `https`, `file` and `classpath` are supported. 
 For instance `http://myserver/defintions/schemas.zip`, `file:/C:/image/defintions/schemas.zip` or `classpath:defintions/schemas.zip` are valid resource identifier to address a `schemas.zip` resource.  
