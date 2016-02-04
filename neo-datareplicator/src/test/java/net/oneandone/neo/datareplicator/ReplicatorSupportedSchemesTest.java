@@ -96,4 +96,8 @@ public class ReplicatorSupportedSchemesTest {
             Assert.fail("RuntimeException expected");
         } catch (RuntimeException expected) { }
     }
+
+    //todo - add tests for http etag.
+    //todo - re-check thrown exceptions.
+
 }

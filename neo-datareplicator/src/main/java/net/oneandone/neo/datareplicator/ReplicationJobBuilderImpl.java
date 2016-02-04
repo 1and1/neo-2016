@@ -34,9 +34,7 @@ import java.nio.charset.Charset;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -46,6 +44,7 @@ import java.util.function.Consumer;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation.Builder;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -135,7 +134,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
     public ReplicationJobBuilderImpl withClient(final Client client) {
         Preconditions.checkNotNull(client);
         return new ReplicationJobBuilderImpl(this.uri,
-                                             this.failOnInitFailure, 
+                                             this.failOnInitFailure,
                                              this.cacheDir,
                                              this.maxCacheTime,
                                              this.refreshPeriod,
@@ -146,7 +145,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
     public ReplicationJob startConsumingBinary(final Consumer<byte[]> consumer) {
         return startConsuming(data -> consumer.accept(data.asBinary()));
     }
-    
+
     @Override
     public ReplicationJob startConsumingText(final Consumer<String> consumer) {
         return startConsuming(data -> consumer.accept(data.asText()));
@@ -160,69 +159,69 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                                      maxCacheTime,
                                      refreshPeriod,
                                      client,
-                                     consumer);  
+                                     consumer);
     }
-    
-    
+
+
     // internal data representation
     private static interface Data {
-        
+
         long getHash();
-        
+
         byte[] asBinary();
-        
+
         String asText();
     }
 
-    
+
     private static class HeuristicsDecodingData implements Data {
         private final byte[] binary;
         private final long hash;
-        
+
         public HeuristicsDecodingData(final byte[] binary) {
             this.binary = binary;
             this.hash = Hashing.md5().newHasher().putBytes(binary).hash().asLong();
         }
-        
+
         @Override
         public long getHash() {
             return hash;
         }
-        
+
         @Override
         public byte[] asBinary() {
             return binary;
         }
-        
+
         @Override
         public String asText() {
             return new String(binary, getCharset());
         }
-        
+
         protected Charset getCharset() {
             return CharsetDetector.guessEncoding(binary);
         }
     }
 
 
-    
-    
+
+
     private static class MimeTypeBasedDecodingData extends HeuristicsDecodingData {
         private final Charset charset;
-        
+
         public MimeTypeBasedDecodingData(final byte[] binary, final MediaType mediaType) {
             this(binary, mediaType.getParameters().get(MediaType.CHARSET_PARAMETER));
         }
-        
+
         private MimeTypeBasedDecodingData(final byte[] binary, final String charsetname) {
             this(binary, (charsetname == null) ? null : Charset.forName(charsetname));
         }
-        
+
         private MimeTypeBasedDecodingData(final byte[] binary, final Charset charset) {
-            super((charset == null) ? binary : toUtf8EncodedBinary(binary, charset));  
+            super((charset == null) ? binary : toUtf8EncodedBinary(binary, charset));
             this.charset = (charset == null) ? null : Charsets.UTF_8;
         }
-        
+
         private static byte[] toUtf8EncodedBinary(final byte[] binary, final Charset charset) {
             return new String(binary, charset).getBytes(Charsets.UTF_8);
         }
@@ -233,9 +232,9 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                                      : charset;
         }
     }
-    
-    
-    
+
+
+
     private static final class ReplicatonJobImpl implements ReplicationJob {
         private final Datasource datasource;
         private final FileCache fileCache;
@@ -359,8 +358,8 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             return new StringBuilder(datasource.toString())
                     .append(", refreshperiod=").append(refreshPeriod)
                     .append(", maxCacheTime=").append(maxCacheTime)
-                    .append(" (last reload success: ").append(lastRefreshSuccess.get().map(time -> time.toString()).orElse("none"))
-                    .append(", last reload error: ").append(lastRefreshError.get().map(time -> time.toString()).orElse("none")).append(")")
+                    .append(" (last reload success: ").append(lastRefreshSuccess.get().map(Instant::toString).orElse("none"))
+                    .append(", last reload error: ").append(lastRefreshError.get().map(Instant::toString).orElse("none")).append(")")
                     .toString();
         }
 
@@ -368,7 +367,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
         private static final class ConsumerAdapter implements Consumer<Data> {
             private final Consumer<Data> consumer;
-            private final AtomicReference<Long> lastMd5 = new AtomicReference<>(0l);
+            private final AtomicReference<Long> lastMd5 = new AtomicReference<>(0L);
 
             public ConsumerAdapter(final Consumer<Data> consumer) {
                 this.consumer = consumer;
@@ -428,13 +427,10 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                     throw new RuntimeException("resource " + getEndpoint().getRawSchemeSpecificPart() + " not found in classpath");
 
                 } else {
-                    InputStream is = null;
-                    try {
-                        return new HeuristicsDecodingData(ByteStreams.toByteArray(classpathUri.openStream()));
+                    try (InputStream is=classpathUri.openStream()) {
+                        return new HeuristicsDecodingData(ByteStreams.toByteArray(is));
                     } catch (final IOException ioe) {
                         throw new ReplicationException(ioe);
-                    } finally {
-                        Closeables.closeQuietly(is);
                     }
                 }
             }
@@ -505,7 +501,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
                     // will make request conditional, if a response has already been a received
                     if (cached != null) {
-                        builder = builder.header("etag", cached.getEtag());
+                        builder = builder.header(HttpHeaders.ETAG, cached.getEtag());
                     }
 
 
@@ -513,14 +509,15 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                     response = builder.get();
                     final int status = response.getStatus();
 
-
                     // success
                     if ((status / 100) == 2) {
-                        final MediaType mediaType = (response.getHeaderString("Content-type") == null) ? MediaType.APPLICATION_OCTET_STREAM_TYPE
-                                                                                                       : MediaType.valueOf(response.getHeaderString("Content-type"));
+                        String contentType = response.getHeaderString(HttpHeaders.CONTENT_TYPE);
+                        final MediaType mediaType = (contentType == null) ?
+                                MediaType.APPLICATION_OCTET_STREAM_TYPE :
+                                MediaType.valueOf(contentType);
                         final Data data = new MimeTypeBasedDecodingData(response.readEntity(byte[].class), mediaType);
-                        
-                        final String etag = response.getHeaderString("etag");
+
+                        final String etag = response.getHeaderString(HttpHeaders.ETAG);
                         if (!Strings.isNullOrEmpty(etag)) {
                             // add response to cache
                             cacheResponseDate.set(new CachedResponseData(uri, data, etag));
@@ -594,25 +591,25 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                     this.maxCacheTime = maxCacheTime;
                     this.dir = cacheDir.getCanonicalFile();
                     dir.mkdirs();  // will create cache dir, if necessary
-                    if (!dir.exists()) {
+                    if (!dir.exists()) {//if mkdir fails
                         throw new ReplicationException("could not create cache dir " + cacheDir);
                     }
-                    
+
                     // filename is base64 encoded to avoid trouble with special chars
-                    this.genericCacheFileName = Base64.getEncoder().encodeToString(name.getBytes(Charsets.UTF_8)) + "_";  
-                      
+                    this.genericCacheFileName = Base64.getEncoder().encodeToString(name.getBytes(Charsets.UTF_8)) + "_";
+
                 } catch (final IOException ioe) {
                     throw new ReplicationException(ioe);
                 }
             }
 
-            
+
 
             public void update(final Data data) {
                 // creates a new cache file with timestamp
                 final File cacheFile = new File(dir, genericCacheFileName + Instant.now().toEpochMilli() + CACHEFILE_SUFFIX);
                 final File tempFile = new File(dir, UUID.randomUUID().toString() + TEMPFILE_SUFFIX);
- 
+
 
                 /////
                 // why this "newest cache file" approach?
@@ -622,17 +619,12 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                 ////
 
                 try {
-                    FileOutputStream os = null;
-                    try {
+                    try (FileOutputStream os = new FileOutputStream(tempFile)) {
                         // write the new cache file
-                        os = new FileOutputStream(tempFile);
                         os.write(data.asBinary());
                         os.close();
-
                         // and commit it (this renaming approach avoids "half-written" cache files. A cache file is there or not)
                         java.nio.file.Files.move(tempFile.toPath(), cacheFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
-                    } finally {
-                        Closeables.close(os, true);  // close os in any case
                     }
 
                     // perform clean up to remove expired file
@@ -648,14 +640,10 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             public Data load() {
                 final Optional<File> cacheFile = getNewestCacheFile();
                 if (cacheFile.isPresent()) {
-                    FileInputStream is = null;
-                    try {
-                        is = new FileInputStream(cacheFile.get());
+                    try(FileInputStream is = new FileInputStream(cacheFile.get());) {
                         return new HeuristicsDecodingData(ByteStreams.toByteArray(is));
                     } catch (final IOException ioe) {
                         throw new ReplicationException("loading cache file " + cacheFile.get()  + " failed", ioe);
-                    } finally {
-                        Closeables.closeQuietly(is);
                     }
 
                 } else {
@@ -700,7 +688,10 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
 
 
             private ImmutableList<File> getCacheFiles() {
-                return ImmutableList.copyOf(dir.listFiles())
+                File[] files = dir.listFiles();
+                if (files==null)
+                    return ImmutableList.of();
+                return ImmutableList.copyOf(files)
                                                .stream()
                                                .filter(file -> file.getName().endsWith(CACHEFILE_SUFFIX))
                                                .filter(file -> file.getName().startsWith(genericCacheFileName))
@@ -723,12 +714,15 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
             private void removeExpiredTempFiles() {
                 // remove expired temp files. temp file should exists for few millis or seconds only.
                 final long minAgeTime = Instant.now().minus(Duration.ofDays(7)).toEpochMilli();
-                ImmutableList.copyOf(dir.listFiles())
+                File[] files = dir.listFiles();
+                if (files==null)//this should not happen unless some I/O error
+                    return;
+                ImmutableList.copyOf(files)
                              .stream()
                              .filter(file -> file.getName().endsWith(TEMPFILE_SUFFIX))
                              .filter(file -> file.lastModified() < minAgeTime)           // filter old temp file (days!)
                              .collect(Immutables.toList())
-                             .forEach(file -> file.delete());                            // and delete it
+                             .forEach(file -> {if (!file.delete()) LOG.warn("failed to delete "+file.getName());}); // and delete it
             }
 
 
@@ -741,7 +735,7 @@ final class ReplicationJobBuilderImpl implements ReplicationJobBuilder {
                     getCacheFiles().stream()
                                    .filter(file -> parseTimestamp(file) < newestTime)   // filter expired cache files
                                    .collect(Immutables.toList())
-                                   .forEach(file -> file.delete());                     // and delete it
+                                   .forEach(file -> {if (!file.delete()) LOG.warn("failed to delete "+file.getName());}); // and delete it
                 }
             }
 
